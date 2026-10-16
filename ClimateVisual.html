@@ -1,0 +1,641 @@
+// This is broken (Claude widget artifact of climate tipping point thresholds)
+// and will be deciphered/repaired/reconstructed.
+
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script id="lumi-getcssvar">
+window.getCssVar = window.getCssVar || function(name) {
+  try {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  } catch (e) { return ''; }
+};
+</script>
+/* luminous.css */
+/*
+ * Luminous runtime stylesheet — injected once into every generated widget's
+ * <head> by the C++ widget agent (id="lumi-runtime"). Single Source of Truth
+ * for ALL design tokens and pre-baked .lumi-* component classes. The SI prompts
+ * (design.md / html_generation.jinja2 / chart.jinja2) must NOT re-declare these
+ * tokens or component CSS; they only reference them.
+ *
+ * Sections:
+ *   1. Web fonts (Google Sans Flex + Google Sans Code)
+ *   2. Light token :root (from previewer tokens.css, verbatim)
+ *   3. Dark token overrides — REMAPPED to :root so canvas/D3 readers of
+ *      getComputedStyle(document.documentElement) resolve dark values (D3).
+ *   4. Short diagram/chart aliases (bridge legacy --surface / --chart-N names).
+ *   5. In-scope pre-baked .lumi-* component classes.
+ */
+
+/* ============================================================
+ * 1. WEB FONTS  (Google Sans Flex + Google Sans Code only)
+ *    Material Symbols Outlined is intentionally NOT loaded: no in-scope
+ *    .lumi-* control has a functional CSS glyph dependency on it, and the
+ *    icon ban forbids decorative icons (Decision D2).
+ * ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:ital,wght@0,300..700;1,300..700&family=Google+Sans+Code:ital,wght,MONO@0,300..700,0..1;1,300..700,0..1&display=swap');
+
+
+/* ============================================================
+ * SCROLLBAR DISCIPLINE (single source of truth)
+ *   Long lists/cards flow and let the iframe auto-resize (see the C++
+ *   NeutralizeInnerScroll pass, which removes accidental tiny scroll boxes).
+ *   For LEGITIMATE overflow that remains (wide tables, code, pan-containers,
+ *   large >=240px viewports) render a slim, theme-aware scrollbar.
+ *   One token carries the correct light/dark contrast (the auto-flipped
+ *   stroke token is too dark on #0f0f0f), referenced once = SSoT.
+ * ============================================================ */
+ <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Climate Tipping Points Causal Loop Diagram</title>
+  <style>
+<script id="lumi-os-theme-init">
+(function() {
+  function syncBody() {
+    var dt = document.documentElement.getAttribute('data-theme');
+    if (document.body && (dt === 'dark' || dt === 'light')) {
+      document.body.classList.toggle('dark-mode', dt === 'dark');
+    }
+  }
+  function syncTheme(theme) {
+    if (theme !== 'dark' && theme !== 'light') return;
+    document.documentElement.setAttribute('data-theme', theme);
+    syncBody();
+  }
+  if (typeof MutationObserver === 'function') {
+    new MutationObserver(syncBody).observe(document.documentElement, {
+      attributes: true, attributeFilter: ['data-theme']
+    });
+  }
+  if (typeof document.addEventListener === 'function') {
+    document.addEventListener('DOMContentLoaded', syncBody);
+  }
+  try {
+    var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+    if (mq) {
+      var cur = document.documentElement.getAttribute('data-theme');
+      if (!cur) {
+        syncTheme(mq.matches ? 'dark' : 'light');
+      } else {
+        syncTheme(cur);
+      }
+      if (mq.addEventListener) {
+        mq.addEventListener('change', function(e) {
+          syncTheme(e.matches ? 'dark' : 'light');
+        });
+      }
+    }
+  } catch (e) {}
+  window.addEventListener('message', function(e) {
+    if (e.data && (e.data.type === 'set-theme' || e.data.type === 'APPLY_THEME') && e.data.theme) {
+      syncTheme(e.data.theme);
+    }
+  });
+})();
+</script>
+</head>
+<body>
+  <div class="widget-container">
+    <!-- Header Block -->
+    <div class="header-block">
+      <h2 class="lumi-headline-m" style="margin: 0;">Climate Tipping Feedback Loops</h2>
+      <p class="lumi-body-s" style="margin: 0; color: var(--on-surface-variant);">
+        Explore how localized warming thresholds spark cascading domino effects and self-reinforcing climate feedbacks.
+      </p>
+    </div>
+
+    <!-- Interactive Temperature Step Selector -->
+    <div class="controls-row">
+      <span class="lumi-label-m lumi-body-m-emphasized">Global Warming Target:</span>
+      <div class="lumi-segmented-group" style="display: flex; gap: 4px; background: var(--surface-dim); padding: 3px; border-radius: var(--r-full, 999px); border: 1px solid var(--stroke-default);">
+        <button class="lumi-btn lumi-small step-btn is-selected" data-temp="1.1" onclick="setTempThreshold(1.1)">+1.1°C Present</button>
+        <button class="lumi-btn lumi-small step-btn" data-temp="1.5" onclick="setTempThreshold(1.5)">+1.5°C Paris Target</button>
+        <button class="lumi-btn lumi-small step-btn" data-temp="2.0" onclick="setTempThreshold(2.0)">+2.0°C Guardrail</button>
+        <button class="lumi-btn lumi-small step-btn" data-temp="3.0" onclick="setTempThreshold(3.0)">+3.0°C Severe Risk</button>
+      </div>
+    </div>
+
+    <!-- Diagram Viewport -->
+    <div class="widget-viewport">
+      <svg id="causalDiagram" class="diagram-svg" viewBox="0 0 660 410" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <!-- Reinforcing Red Caret -->
+          <marker id="lumi-caret-red" viewBox="0 0 10 10" refX="7.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto">
+            <path d="M 2.5 1.5 L 7.5 5 L 2.5 8.5" fill="none" stroke="var(--error)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+
+          <!-- Disruptive / Balancing Blue Caret -->
+          <marker id="lumi-caret-blue" viewBox="0 0 10 10" refX="7.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto">
+            <path d="M 2.5 1.5 L 7.5 5 L 2.5 8.5" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+
+          <!-- Neutral Inactive Caret -->
+          <marker id="lumi-caret-dim" viewBox="0 0 10 10" refX="7.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto">
+            <path d="M 2.5 1.5 L 7.5 5 L 2.5 8.5" fill="none" stroke="var(--outline)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+
+        <!-- Dynamic Causal Edges Group -->
+        <g id="edgesGroup"></g>
+
+        <!-- Animated Particle Flow Layer -->
+        <g id="particlesGroup"></g>
+
+        <!-- Node Cards Group -->
+        <g id="nodesGroup"></g>
+
+        <!-- Legend Strip -->
+        <g transform="translate(16, 388)">
+          <line x1="0" y1="-12" x2="628" y2="-12" stroke="var(--stroke-default)" stroke-width="1"/>
+          
+          <rect x="0" y="-4" width="12" height="12" rx="3" fill="var(--error)"/>
+          <text x="18" y="6" font-family="var(--ff-mono)" font-size="12" font-style="italic" fill="var(--on-surface-variant)">Reinforcing Feedback (+ Warming)</text>
+
+          <rect x="230" y="-4" width="12" height="12" rx="3" fill="var(--primary)"/>
+          <text x="248" y="6" font-family="var(--ff-mono)" font-size="12" font-style="italic" fill="var(--on-surface-variant)">Disruptive Circulation Forcing</text>
+
+          <circle cx="475" cy="2" r="5" fill="var(--accent-container)" stroke="var(--primary)" stroke-width="1.5"/>
+          <text x="486" y="6" font-family="var(--ff-mono)" font-size="12" font-style="italic" fill="var(--on-surface-variant)">Core Driver</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Cascade Summary Panel -->
+    <div class="summary-card" id="summaryCard">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <span id="stateTitle" class="lumi-headline-s lumi-body-m-emphasized" style="color: var(--on-surface);">Present Climate (+1.1°C)</span>
+        <span id="riskBadge" class="lumi-chip" style="background: var(--surface-dim); color: var(--on-surface); font-weight: 500;">Risk: Low Cascading Stress</span>
+      </div>
+      
+      <p id="stateDescription" class="lumi-body-m" style="margin: 0; color: var(--on-surface-variant);">
+        At present warming levels, primary tipping elements remain relatively stable, though polar sea ice loss initiates weak self-reinforcing warming loops.
+      </p>
+
+      <div class="metrics-row" style="margin-top: 4px; border-top: 1px stroke var(--stroke-default); padding-top: 8px;">
+        <div class="metric-badge">
+          <span class="lumi-body-s" style="color: var(--on-surface-variant);">Unstable Tipping Nodes</span>
+          <span id="activeNodesCount" class="lumi-code lumi-body-m-emphasized" style="color: var(--on-surface);">0 / 5 Elements</span>
+        </div>
+        <div class="metric-badge">
+          <span class="lumi-body-s" style="color: var(--on-surface-variant);">Feedback Acceleration</span>
+          <span id="feedbackIntensity" class="lumi-code lumi-body-m-emphasized" style="color: var(--on-surface);">Baseline (+0.02°C/dec)</span>
+        </div>
+        <div class="metric-badge">
+          <span class="lumi-body-s" style="color: var(--on-surface-variant);">Primary Domino Coupling</span>
+          <span id="dominoChain" class="lumi-code lumi-body-m-emphasized" style="color: var(--on-surface);">Ice-Albedo Feedback</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Data Model & Node Setup ---
+    const NODES = {
+      gtemp: {
+        id: 'gtemp',
+        title: 'Global Mean Temp',
+        sub: 'Central Engine',
+        x: 330, y: 70, w: 170, h: 54, rx: 27,
+        threshold: 0.0,
+        isCore: true
+      },
+      arctic: {
+        id: 'arctic',
+        title: 'Arctic Winter Ice',
+        sub: 'Albedo Reduction',
+        x: 530, y: 70, w: 150, h: 50, rx: 25,
+        threshold: 1.2
+      },
+      permafrost: {
+        id: 'permafrost',
+        title: 'Boreal Permafrost',
+        sub: 'Methane & CO₂ Release',
+        x: 530, y: 215, w: 150, h: 50, rx: 25,
+        threshold: 1.8
+      },
+      greenland: {
+        id: 'greenland',
+        title: 'Greenland Ice Sheet',
+        sub: 'Freshwater Discharge',
+        x: 450, y: 335, w: 155, h: 50, rx: 25,
+        threshold: 1.5
+      },
+      amoc: {
+        id: 'amoc',
+        title: 'AMOC Circulation',
+        sub: 'North Atlantic Cooling',
+        x: 210, y: 335, w: 155, h: 50, rx: 25,
+        threshold: 2.0
+      },
+      amazon: {
+        id: 'amazon',
+        title: 'Amazon Rainforest',
+        sub: 'Dieback to Savanna',
+        x: 130, y: 215, w: 150, h: 50, rx: 25,
+        threshold: 2.5
+      }
+    };
+
+    const EDGES = [
+      // 1. Temp -> Arctic Ice Loss
+      {
+        id: 'edge-temp-arctic',
+        from: 'gtemp', to: 'arctic',
+        pathD: 'M 415 62 L 455 62',
+        type: 'reinforcing', threshold: 1.2,
+        label: '+Warming'
+      },
+      // 2. Arctic Ice Loss -> Temp (Albedo)
+      {
+        id: 'edge-arctic-temp',
+        from: 'arctic', to: 'gtemp',
+        pathD: 'M 455 78 L 415 78',
+        type: 'reinforcing', threshold: 1.2,
+        label: '+Albedo Loss'
+      },
+      // 3. Temp -> Greenland Ice Sheet
+      {
+        id: 'edge-temp-greenland',
+        from: 'gtemp', to: 'greenland',
+        pathD: 'M 370 97 C 420 140, 450 200, 450 310',
+        type: 'reinforcing', threshold: 1.5,
+        label: '+Melt'
+      },
+      // 4. Greenland -> AMOC Disruption
+      {
+        id: 'edge-greenland-amoc',
+        from: 'greenland', to: 'amoc',
+        pathD: 'M 372 335 L 288 335',
+        type: 'disruptive', threshold: 2.0,
+        label: 'Freshwater'
+      },
+      // 5. AMOC -> Temp (Disruptive / Regional Cooling)
+      {
+        id: 'edge-amoc-temp',
+        from: 'amoc', to: 'gtemp',
+        pathD: 'M 210 310 C 210 200, 240 140, 290 97',
+        type: 'disruptive', threshold: 2.0,
+        label: 'Disruption'
+      },
+      // 6. Temp -> Boreal Permafrost
+      {
+        id: 'edge-temp-permafrost',
+        from: 'gtemp', to: 'permafrost',
+        pathD: 'M 390 97 C 440 120, 455 150, 455 190',
+        type: 'reinforcing', threshold: 1.8,
+        label: '+Thaw'
+      },
+      // 7. Permafrost -> Temp
+      {
+        id: 'edge-permafrost-temp',
+        from: 'permafrost', to: 'gtemp',
+        pathD: 'M 470 190 C 470 150, 450 120, 410 97',
+        type: 'reinforcing', threshold: 1.8,
+        label: '+CH₄ / CO₂'
+      },
+      // 8. Temp -> Amazon Rainforest
+      {
+        id: 'edge-temp-amazon',
+        from: 'gtemp', to: 'amazon',
+        pathD: 'M 270 97 C 220 120, 205 150, 205 190',
+        type: 'reinforcing', threshold: 2.5,
+        label: '+Drought'
+      },
+      // 9. Amazon -> Temp
+      {
+        id: 'edge-amazon-temp',
+        from: 'amazon', to: 'gtemp',
+        pathD: 'M 190 190 C 190 150, 210 120, 250 97',
+        type: 'reinforcing', threshold: 2.5,
+        label: '+Carbon Release'
+      }
+    ];
+
+    const THRESHOLD_DETAILS = {
+      1.1: {
+        title: 'Present Climate State (+1.1°C)',
+        risk: 'Risk: Minimal Tipping Stress',
+        riskClass: 'background: var(--surface-dim); color: var(--on-surface);',
+        desc: 'At current warming, tipping elements remain predominantly stable. Minor polar summer sea ice decay is active, but major systemic feedback loops have not crossed critical thresholds.',
+        nodesCount: '0 / 5 Elements',
+        feedback: 'Baseline (+0.02°C/dec)',
+        domino: 'Localized Polar Loss'
+      },
+      1.5: {
+        title: 'Paris Threshold (+1.5°C)',
+        risk: 'Risk: Moderate Cascading Threat',
+        riskClass: 'background: var(--accent-container); color: var(--accent-fixed); font-weight: 600;',
+        desc: 'Crossing 1.5°C commits Arctic Winter Sea Ice to rapid collapse and triggers irreversible Greenland Ice Sheet melt acceleration, increasing freshwater discharge into the North Atlantic.',
+        nodesCount: '2 / 5 Elements',
+        feedback: 'Accelerated (+0.08°C/dec)',
+        domino: 'Arctic Ice → Greenland Melt'
+      },
+      2.0: {
+        title: 'Guardrail Breach (+2.0°C)',
+        risk: 'Risk: High Systemic Instability',
+        riskClass: 'background: #fef3c7; color: #92400e; font-weight: 600;',
+        desc: 'Boreal permafrost Thaw releases massive subterranean methane reservoirs. Freshwater influx from Greenland severely weakens AMOC circulation, threatening global weather patterns.',
+        nodesCount: '4 / 5 Elements',
+        feedback: 'Self-Sustaining (+0.18°C/dec)',
+        domino: 'Greenland → AMOC Disruption'
+      },
+      3.0: {
+        title: 'Severe Tipping Cascade (+3.0°C)',
+        risk: 'Risk: Severe Global Domino Effect',
+        riskClass: 'background: var(--error-container); color: var(--error); font-weight: 600;',
+        desc: 'Widespread Amazon rainforest dieback transforms the basin from a vital carbon sink into a carbon source, creating an unstoppable global warming feedback cascade.',
+        nodesCount: '5 / 5 Elements',
+        feedback: 'Runaway (+0.35°C/dec)',
+        domino: 'Amazon Dieback → Global Heating'
+      }
+    };
+
+    // --- State & Handles ---
+    let currentTemp = 1.1;
+    let particles = [];
+    let rafId = null;
+
+    // Canvas/DOM element handles
+    const edgesGroup = document.getElementById('edgesGroup');
+    const nodesGroup = document.getElementById('nodesGroup');
+    const particlesGroup = document.getElementById('particlesGroup');
+
+    // Helper to safely get CSS tokens
+    function getCssVar(name) {
+      if (!name) return '';
+      const clean = name.replace(/^var\(/, '').replace(/\)$/, '').trim();
+      return getComputedStyle(document.documentElement).getPropertyValue(clean.startsWith('--') ? clean : '--' + clean).trim() || '#727676';
+    }
+
+    // --- Init Diagram DOM ---
+    function initDiagramDOM() {
+      // 1. Render Edges
+      edgesGroup.innerHTML = '';
+      EDGES.forEach(edge => {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('id', edge.id);
+        path.setAttribute('d', edge.pathD);
+        path.setAttribute('class', 'edge-path');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke-width', '1.6');
+        edgesGroup.appendChild(path);
+      });
+
+      // 2. Render Nodes
+      nodesGroup.innerHTML = '';
+      Object.values(NODES).forEach(node => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('id', `node-${node.id}`);
+        g.setAttribute('class', `node-card ${node.isCore ? 'is-core' : ''}`);
+        g.setAttribute('transform', `translate(${node.x - node.w/2}, ${node.y - node.h/2})`);
+        g.onclick = () => onNodeClick(node);
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('width', node.w);
+        rect.setAttribute('height', node.h);
+        rect.setAttribute('rx', node.rx);
+
+        // Text title
+        const tTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        tTitle.setAttribute('x', node.w / 2);
+        tTitle.setAttribute('y', node.h / 2 - 4);
+        tTitle.setAttribute('text-anchor', 'middle');
+        tTitle.setAttribute('font-family', 'var(--ff-sans)');
+        tTitle.setAttribute('font-size', node.isCore ? '15' : '14');
+        tTitle.setAttribute('font-weight', '500');
+        if (tTitle) tTitle.textContent = node.title;
+
+        // Text subtitle
+        const tSub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        tSub.setAttribute('x', node.w / 2);
+        tSub.setAttribute('y', node.h / 2 + 12);
+        tSub.setAttribute('text-anchor', 'middle');
+        tSub.setAttribute('font-family', 'var(--ff-mono)');
+        tSub.setAttribute('font-size', '11');
+        tSub.setAttribute('font-style', 'italic');
+        if (tSub) tSub.textContent = node.sub;
+
+        g.appendChild(rect);
+        g.appendChild(tTitle);
+        g.appendChild(tSub);
+        nodesGroup.appendChild(g);
+      });
+    }
+
+    // Handle user clicking on a node
+    function onNodeClick(node) {
+      if (node.isCore) return;
+      // Auto switch threshold to match node if clicked
+      const requiredTemp = node.threshold;
+      let targetStep = 1.1;
+      if (requiredTemp <= 1.2) targetStep = 1.5;
+      else if (requiredTemp <= 2.0) targetStep = 2.0;
+      else targetStep = 3.0;
+      
+      setTempThreshold(targetStep);
+    }
+
+    // --- Update Visualization State ---
+    function updateViz() {
+      try {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+        // Update step button UI
+        document.querySelectorAll('.step-btn').forEach(btn => {
+          const t = parseFloat(btn.dataset.temp);
+          if (Math.abs(t - currentTemp) < 0.05) {
+            btn.classList.add('is-selected');
+            btn.style.background = getCssVar('--primary-container');
+            btn.style.color = getCssVar('--accent-fixed');
+            btn.style.fontWeight = '600';
+          } else {
+            btn.classList.remove('is-selected');
+            btn.style.background = 'transparent';
+            btn.style.color = getCssVar('--on-surface');
+            btn.style.fontWeight = '400';
+          }
+        });
+
+        // 1. Update Edges
+        EDGES.forEach(edge => {
+          const path = document.getElementById(edge.id);
+          if (!path) return;
+
+          const isActive = currentTemp >= edge.threshold;
+          const isReinforcing = edge.type === 'reinforcing';
+
+          if (isActive) {
+            const strokeColor = isReinforcing ? 'var(--error)' : 'var(--primary)';
+            const marker = isReinforcing ? 'url(#lumi-caret-red)' : 'url(#lumi-caret-blue)';
+            
+            path.setAttribute('stroke', strokeColor);
+            path.setAttribute('stroke-width', '2.0');
+            path.setAttribute('marker-end', marker);
+            path.setAttribute('stroke-dasharray', 'none');
+            path.classList.remove('is-inactive');
+          } else {
+            path.setAttribute('stroke', 'var(--outline)');
+            path.setAttribute('stroke-width', '1.2');
+            path.setAttribute('marker-end', 'url(#lumi-caret-dim)');
+            path.classList.add('is-inactive');
+          }
+        });
+
+        // 2. Update Nodes
+        Object.values(NODES).forEach(node => {
+          const g = document.getElementById(`node-${node.id}`);
+          if (!g) return;
+
+          const rect = g.querySelector('rect');
+          const title = g.querySelectorAll('text')[0];
+          const sub = g.querySelectorAll('text')[1];
+
+          const isTipped = currentTemp >= node.threshold && !node.isCore;
+
+          if (node.isCore) {
+            rect.setAttribute('fill', 'var(--accent-container)');
+            rect.setAttribute('stroke', 'var(--primary)');
+            rect.setAttribute('stroke-width', '2');
+            title.setAttribute('fill', 'var(--on-surface)');
+            sub.setAttribute('fill', 'var(--on-surface-variant)');
+          } else if (isTipped) {
+            g.classList.remove('is-inactive');
+            g.classList.add('is-tipped');
+            
+            const strokeColor = node.id === 'amoc' ? 'var(--primary)' : 'var(--error)';
+            rect.setAttribute('fill', 'var(--surface-bright)');
+            rect.setAttribute('stroke', strokeColor);
+            rect.setAttribute('stroke-width', '2');
+            
+            title.setAttribute('fill', 'var(--on-surface)');
+            sub.setAttribute('fill', strokeColor);
+          } else {
+            g.classList.add('is-inactive');
+            g.classList.remove('is-tipped');
+
+            rect.setAttribute('fill', 'var(--surface-dim)');
+            rect.setAttribute('stroke', 'var(--stroke-default)');
+            rect.setAttribute('stroke-width', '1');
+
+            title.setAttribute('fill', 'var(--on-surface-variant)');
+            sub.setAttribute('fill', 'var(--on-surface-variant)');
+          }
+        });
+
+        // 3. Update Summary Card Text
+        const details = THRESHOLD_DETAILS[currentTemp] || THRESHOLD_DETAILS[1.1];
+        document.getElementById('stateTitle').textContent = details.title;
+        document.getElementById('stateDescription').textContent = details.desc;
+        document.getElementById('activeNodesCount').textContent = details.nodesCount;
+        document.getElementById('feedbackIntensity').textContent = details.feedback;
+        document.getElementById('dominoChain').textContent = details.domino;
+
+        const riskBadge = document.getElementById('riskBadge');
+        if (riskBadge) riskBadge.textContent = details.risk;
+        riskBadge.style.cssText = details.riskClass + '; padding: 4px 12px; border-radius: var(--r-full, 999px);';
+
+        // Re-init particles for active paths
+        initParticles();
+
+      } catch (err) {
+        console.error("Error in updateViz:", err);
+      }
+    }
+
+    // --- Particle Animation Engine ---
+    function initParticles() {
+      particles = [];
+      EDGES.forEach(edge => {
+        if (currentTemp >= edge.threshold) {
+          const pathEl = document.getElementById(edge.id);
+          if (pathEl) {
+            const length = pathEl.getTotalLength();
+            // Spawn 2 particles per active edge
+            particles.push({
+              pathEl: pathEl,
+              length: length,
+              progress: 0,
+              speed: 0.35 + Math.random() * 0.15,
+              color: edge.type === 'reinforcing' ? 'var(--error)' : 'var(--primary)'
+            });
+            particles.push({
+              pathEl: pathEl,
+              length: length,
+              progress: 0.5,
+              speed: 0.35 + Math.random() * 0.15,
+              color: edge.type === 'reinforcing' ? 'var(--error)' : 'var(--primary)'
+            });
+          }
+        }
+      });
+    }
+
+    function animateParticles() {
+      if (particlesGroup) particlesGroup.innerHTML = '';
+
+      particles.forEach(p => {
+        p.progress += (p.speed / p.length) * 1.8;
+        if (p.progress > 0.92) p.progress = 0.05; // Stay within visible path
+
+        const pt = p.pathEl.getPointAtLength(p.progress * p.length);
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', pt.x);
+        circle.setAttribute('cy', pt.y);
+        circle.setAttribute('r', '3.5');
+        circle.setAttribute('fill', p.color);
+        circle.setAttribute('class', 'particle');
+        circle.setAttribute('opacity', Math.sin(p.progress * Math.PI).toFixed(2));
+        particlesGroup.appendChild(circle);
+      });
+
+      rafId = requestAnimationFrame(animateParticles);
+    }
+
+    // User action handler
+    window.setTempThreshold = function(temp) {
+      currentTemp = temp;
+      updateViz();
+    };
+
+    // Initial setup on DOM ready
+    initDiagramDOM();
+    updateViz();
+    if (rafId) cancelAnimationFrame(rafId);
+    animateParticles();
+
+    // Theme and resize integrations
+    const applyTheme = t => {
+      document.documentElement.setAttribute('data-theme', t);
+      if (typeof updateViz === 'function') updateViz();
+    };
+
+    if (!document.documentElement.hasAttribute('data-theme') && window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
+      applyTheme('dark');
+    }
+
+    window.addEventListener('message', e => {
+      if (e.data?.type === 'set-theme' || e.data?.type === 'APPLY_THEME') {
+        applyTheme(e.data.theme);
+      }
+    });
+
+    (function autoResize() {
+      function notifyHeight() {
+        const c = document.querySelector('.widget-container') || document.body;
+        if (!c) return;
+        const h = Math.ceil(Math.max(c.getBoundingClientRect().bottom, c.scrollHeight));
+        window.parent.postMessage({type: 'widget-resize', height: h}, '*');
+      }
+      window.addEventListener('load', () => setTimeout(notifyHeight, 120));
+      new ResizeObserver(() => notifyHeight()).observe(document.querySelector('.widget-container') || document.body);
+    })();
+  </script>
+
+<script>/*luminous-slider-normalizer*/(function(){function f(r){if(!r||r.type!=='range')return;var mn=parseFloat(r.min||'0'),mx=parseFloat(r.max||'100'),v=parseFloat(r.value);if(isNaN(v))v=(mn+mx)/2;var p=mx>mn?((v-mn)/(mx-mn))*100:50;r.style.setProperty('--progress',p+'%');r.style.removeProperty('--slider-fill');}function all(){document.querySelectorAll('input[type="range"], .lumi-slider').forEach(f);}document.addEventListener('input',function(e){f(e.target);});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',all);else all();})();</script>
+</body>
+</html>
+```
